@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>のどコンディション チェック</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f5f7fa; color: #333; text-align: center; padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { font-size: 24px; color: #2c3e50; }
+        .instruction { color: #7f8c8d; font-size: 14px; margin-bottom: 20px; }
+        
+        #recordBtn {
+            background-color: #e74c3c; color: white; border: none; padding: 15px 40px; font-size: 18px;
+            border-radius: 50px; cursor: pointer; transition: background 0.3s; box-shadow: 0 4px 6px rgba(231, 76, 60, 0.3);
+        }
+        #recordBtn:hover { background-color: #c0392b; }
+        #recordBtn:disabled { background-color: #bdc3c7; cursor: not-allowed; box-shadow: none; }
+        
+        #status { font-size: 28px; font-weight: bold; margin: 20px 0; color: #e67e22; height: 35px; }
+        
+        .result-box { display: none; margin-top: 30px; text-align: left; border-top: 2px solid #ecf0f1; padding-top: 20px; }
+        .score-circle {
+            width: 120px; height: 120px; border-radius: 50%; background: #8BC34A; color: white;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            margin: 0 auto 20px; font-size: 36px; font-weight: bold;
+        }
+        .score-circle span { font-size: 14px; font-weight: normal; }
+        
+        .sub-score { display: flex; justify-content: space-between; margin-bottom: 10px; padding: 10px; background: #f8f9fa; border-radius: 8px; }
+        .voice-profile { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        .profile-item { background: #f0f3f4; padding: 10px; border-radius: 8px; font-size: 13px; text-align: center; }
+        .profile-icon { font-size: 24px; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>のどコンディション チェック</h1>
+    <p class="instruction">ボタンを押すと「3, 2, 1」の後に録音が始まります。<br>5秒間「あーーー」と発声し続けてください。</p>
+    
+    <button id="recordBtn">チェック開始</button>
+    <div id="status"></div>
+
+    <div id="resultBox" class="result-box">
+        <div class="score-circle" id="totalScoreBg">
+            <div id="totalScore">--</div>
+            <span>総合スコア</span>
+        </div>
+        <h3 id="scoreLabel" style="text-align: center; color: #2c3e50; margin-bottom: 20px;"></h3>
+
+        <h4>詳細スコア</h4>
+        <div class="sub-score">
+            <span>声の通り (CPP)</span><strong id="cppScore">--</strong>
+        </div>
+        <div class="sub-score">
+            <span>声のクリアさ (HNR)</span><strong id="hnrScore">--</strong>
+        </div>
+
+        <h4>声のプロフィール</h4>
+        <div class="voice-profile">
+            <div class="profile-item"><div class="profile-icon">🎵</div><b id="vpPitch">--</b></div>
+            <div class="profile-item"><div class="profile-icon">🌊</div><b id="vpStability">--</b></div>
+            <div class="profile-item"><div class="profile-icon">☀️</div><b id="vpBrightness">--</b></div>
+            <div class="profile-item"><div class="profile-icon">🍃</div><b id="vpSmoothness">--</b></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ★ Cloud RunのAPI URLを設定してください（/docs は外し、エンドポイントのパスを合わせます）
+    // READMEのcurlコマンドを見る限り /api/v1/voice/analyze と推測します
+    const API_URL = "https://voice-api-711078318525.asia-northeast1.run.app/api/v1/voice/analyze";
+
+    const recordBtn = document.getElementById('recordBtn');
+    const statusDiv = document.getElementById('status');
+    const resultBox = document.getElementById('resultBox');
+
+    let mediaRecorder;
+    let audioChunks = [];
+
+    recordBtn.addEventListener('click', async () => {
+        try {
+            // マイクへのアクセス要求
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            startCountdown(stream);
+        } catch (err) {
+            alert('マイクのアクセスが許可されませんでした。ブラウザの設定を確認してください。');
+            console.error(err);
+        }
+    });
+
+    function startCountdown(stream) {
+        recordBtn.disabled = true;
+        resultBox.style.display = 'none';
+        let count = 3;
+        statusDiv.innerText = count;
+
+        const countdownInterval = setInterval(() => {
+            count--;
+            if (count > 0) {
+                statusDiv.innerText = count;
+            } else {
+                clearInterval(countdownInterval);
+                startRecording(stream);
+            }
+        }, 1000);
+    }
+
+    function startRecording(stream) {
+        statusDiv.innerText = "🔴 録音中... 「あーー」";
+        statusDiv.style.color = "#e74c3c";
+        
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = event => {
+            if (event.data.size > 0) {
+                audioChunks.push(event.data);
+            }
+        };
+
+        mediaRecorder.onstop = () => {
+            statusDiv.innerText = "⏳ 解析中...";
+            statusDiv.style.color = "#3498db";
+            
+            // 録音データをBlob化 (ブラウザ標準のフォーマット)
+            const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+            sendToAPI(audioBlob);
+            
+            // マイクのストリームを停止
+            stream.getTracks().forEach(track => track.stop());
+        };
+
+        mediaRecorder.start();
+
+        // 5秒間録音して自動停止
+        setTimeout(() => {
+            mediaRecorder.stop();
+        }, 5000);
+    }
+
+    async function sendToAPI(blob) {
+        const formData = new FormData();
+        // API側でファイル拡張子を気にしないか、ffmpegがよしなに処理してくれることを期待して送信
+        formData.append("file", blob, "voice_record.wav"); 
+
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: {
+                    // ここがコマンドの文字列と完全一致している必要があります
+                    "X-API-Key": "my_super_secret_key_2026" 
+                },
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error(`APIエラー: ${response.status}`);
+            }
+
+            const data = await response.json();
+            displayResults(data);
+            
+        } catch (error) {
+            console.error("送信エラー:", error);
+            statusDiv.innerText = "❌ 解析に失敗しました";
+            recordBtn.disabled = false;
+        }
+    }
+
+    function displayResults(data) {
+        statusDiv.innerText = "✅ 解析完了！";
+        statusDiv.style.color = "#27ae60";
+        recordBtn.disabled = false;
+        recordBtn.innerText = "もう一度チェック";
+
+        // JSONデータから値を画面にセット
+        document.getElementById('totalScore').innerText = Math.round(data.throat_score.total.value);
+        document.getElementById('totalScoreBg').style.backgroundColor = data.throat_score.total.color_hint;
+        document.getElementById('scoreLabel').innerText = data.throat_score.total.level_label;
+        
+        document.getElementById('cppScore').innerText = Math.round(data.throat_score.sub_scores.voice_projection.score) + " 点";
+        document.getElementById('hnrScore').innerText = Math.round(data.throat_score.sub_scores.voice_clarity.score) + " 点";
+
+        document.getElementById('vpPitch').innerText = data.voice_profile.pitch_height.display_value;
+        document.getElementById('vpStability').innerText = data.voice_profile.pitch_stability.display_value;
+        document.getElementById('vpBrightness').innerText = data.voice_profile.brightness.display_value;
+        document.getElementById('vpSmoothness').innerText = data.voice_profile.smoothness.display_value;
+
+        // 結果エリアを表示
+        resultBox.style.display = 'block';
+    }
+</script>
+</body>
+</html>
