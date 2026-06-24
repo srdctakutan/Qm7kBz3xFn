@@ -1,196 +1,871 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>のどコンディション チェック</title>
-    <style>
-        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f5f7fa; color: #333; text-align: center; padding: 20px; }
-        .container { max-width: 500px; margin: 0 auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h1 { font-size: 24px; color: #2c3e50; }
-        .instruction { color: #7f8c8d; font-size: 14px; margin-bottom: 20px; }
-        
-        #recordBtn {
-            background-color: #e74c3c; color: white; border: none; padding: 15px 40px; font-size: 18px;
-            border-radius: 50px; cursor: pointer; transition: background 0.3s; box-shadow: 0 4px 6px rgba(231, 76, 60, 0.3);
-        }
-        #recordBtn:hover { background-color: #c0392b; }
-        #recordBtn:disabled { background-color: #bdc3c7; cursor: not-allowed; box-shadow: none; }
-        
-        #status { font-size: 28px; font-weight: bold; margin: 20px 0; color: #e67e22; height: 35px; }
-        
-        .result-box { display: none; margin-top: 30px; text-align: left; border-top: 2px solid #ecf0f1; padding-top: 20px; }
-        .score-circle {
-            width: 120px; height: 120px; border-radius: 50%; background: #8BC34A; color: white;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            margin: 0 auto 20px; font-size: 36px; font-weight: bold;
-        }
-        .score-circle span { font-size: 14px; font-weight: normal; }
-        
-        .sub-score { display: flex; justify-content: space-between; margin-bottom: 10px; padding: 10px; background: #f8f9fa; border-radius: 8px; }
-        .voice-profile { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
-        .profile-item { background: #f0f3f4; padding: 10px; border-radius: 8px; font-size: 13px; text-align: center; }
-        .profile-icon { font-size: 24px; margin-bottom: 5px; }
-    </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="theme-color" content="#00796b" />
+<title>のどコンディション チェック</title>
+<style>
+:root{
+  --primary:#00796b; --primary-dark:#005f56; --accent:#ff5252;
+  --bg:#ffffff; --card:#ffffff; --text:#1b2227; --muted:#667085;
+  --border:#e3e7ea; --ok:#2e7d32; --warn:#f9a825; --ng:#d32f2f;
+  --safe-top:env(safe-area-inset-top);
+  --safe-bottom:env(safe-area-inset-bottom);
+  --cta-extra:44px;
+  --cta-float-clear:104px;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;width:100%;}
+html{height:100%;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,'Hiragino Kaku Gothic ProN',Meiryo,sans-serif;
+  background:var(--bg); color:var(--text);
+  font-size:16px; line-height:1.55;
+  height:100vh; height:100dvh; height:var(--app-vh, 100dvh);
+  min-height:100vh; min-height:100dvh; min-height:var(--app-vh, 100dvh);
+  display:flex; flex-direction:column;
+  overflow:hidden;
+  overscroll-behavior:contain;
+  -webkit-font-smoothing:antialiased;
+}
+header.app-header{
+  position:sticky; top:0; z-index:20;
+  padding:calc(var(--safe-top) + 8px) 16px 8px;
+  background:#fff; border-bottom:1px solid var(--border);
+  font-weight:800; color:var(--primary); font-size:0.98rem;
+  letter-spacing:.02em; display:flex; align-items:center; min-height:54px;
+}
+.stepper{
+  display:flex; justify-content:center; gap:5px;
+  padding:8px 12px; background:#fff;
+  border-bottom:1px solid var(--border);
+  flex-wrap:nowrap; overflow-x:auto; min-height:30px;
+}
+.stepper::-webkit-scrollbar{display:none;}
+.step-dot{flex:0 0 auto; width:6px; height:6px; border-radius:999px; background:#d9e0e5; transition:.2s ease;}
+.step-dot.active{width:18px; background:var(--primary);}
+.main-container{flex:1 1 auto; min-height:0; display:flex; flex-direction:column; overflow:hidden; background:#fff;}
+.screen{display:none; flex:1 1 auto; min-height:0; flex-direction:column; background:#fff; position:relative;}
+.screen.active{display:flex; animation:fadeIn .25s ease-out;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.screen-body{flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:18px 16px 16px; text-align:center; -webkit-overflow-scrolling:touch;}
+.cta-bar{flex:0 0 auto; padding:12px 16px calc(var(--safe-bottom) + var(--cta-extra)); background:#fff; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:8px; box-shadow:0 -4px 14px rgba(0,0,0,.04);}
+.screen-body.has-cta-float{padding-bottom:var(--cta-float-clear);}
+.cta-float{position:absolute; left:16px; right:16px; bottom:calc(var(--safe-bottom) + 18px); z-index:6; display:flex; flex-direction:column; gap:8px;}
+.cta-float .btn{box-shadow:0 10px 26px rgba(0,0,0,.22);}
+h1,h2,h3,p{margin:0;}
+h1{font-size:1.55rem; color:var(--primary-dark); font-weight:900; line-height:1.3; margin-bottom:8px;}
+h2{font-size:1.3rem; color:var(--primary-dark); font-weight:900; line-height:1.3; margin-bottom:8px;}
+.intro-copy{text-align:left; line-height:1.85; font-size:1rem; background:#fafcfc; border:1px solid var(--border); border-radius:14px; padding:16px; margin:14px 0 4px;}
+.intro-copy p{margin:0 0 14px;}
+.intro-copy p:last-child{margin-bottom:0;}
+.btn{width:100%; border:none; border-radius:14px; padding:16px 18px; min-height:56px; background:var(--primary); color:#fff; font-size:1.06rem; font-weight:800; cursor:pointer; box-shadow:0 6px 16px rgba(0,121,107,.18); -webkit-appearance:none;}
+.btn:active{transform:translateY(1px);}
+.btn:disabled{background:#aab8bd; box-shadow:none;}
+.btn-sub{background:#f4f6f8; color:#445; box-shadow:none; border:1px solid #d9dfe5;}
+.btn-ng{background:var(--ng); box-shadow:0 6px 16px rgba(211,47,47,.2);}
+.note{font-size:.84rem; color:var(--muted); line-height:1.7; margin-top:8px; text-align:center;}
+.part-label{display:inline-block; padding:5px 14px; border-radius:999px; font-size:.84rem; background:var(--primary); color:#fff; margin-bottom:10px; font-weight:800;}
+.guide-text{color:#555; font-size:.96rem; margin-bottom:14px;}
+.utterance-text{background:#fff8f8; border:2px solid #ffd4d4; color:var(--accent); border-radius:14px; padding:16px 14px; font-size:2rem; font-weight:900; line-height:1.3; margin:10px 0 16px;}
+.countdown-321{min-height:6.5rem; display:flex; align-items:center; justify-content:center; font-size:5.5rem; font-weight:900; color:var(--primary); line-height:1;}
+.rec-indicator{display:inline-flex; align-items:center; gap:6px; color:var(--accent); font-weight:800; margin-bottom:6px; font-size:.95rem;}
+.rec-dot{width:10px; height:10px; border-radius:50%; background:var(--accent); animation:blink .8s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+canvas{width:100%; height:74px; background:#fafafa; border:1px solid #eef1f4; border-radius:12px; display:block; margin:10px 0;}
+.timer-text{color:var(--accent); font-size:2.2rem; font-weight:900; line-height:1;}
+.meter-section{margin:12px 0;}
+.meter-label{display:flex; justify-content:space-between; font-size:.78rem; color:#888; margin-bottom:6px;}
+.meter-bg{height:16px; background:#e8ecf0; border-radius:10px; overflow:hidden;}
+.meter-fill{height:100%; width:0%; border-radius:10px; background:linear-gradient(90deg,#00a651,#00cc66,#ffcc00,#ff4444); transition:width .08s;}
+.qc-card{margin-top:14px; border-radius:14px; padding:14px; border:1px solid var(--border); background:#fafcfc; text-align:left; font-size:.94rem;}
+.qc-card.ok{border-color:#bfe5c1; background:#f0faf1;}
+.qc-card.warn{border-color:#f5d58a; background:#fff8e1;}
+.qc-card.ng{border-color:#f3b8b8; background:#fff2f2;}
+.qc-title{font-weight:800; margin-bottom:6px;}
+.qc-title.ok{color:var(--ok);}
+.qc-title.warn{color:var(--warn);}
+.qc-title.ng{color:var(--ng);}
+.qc-list{margin:0; padding-left:18px; line-height:1.7; color:#444;}
+.qc-list .calib{color:#0a6e5f; font-weight:700;}
+.pre-icon{font-size:2.6rem; margin:4px 0;}
+.intro-mini{font-size:.95rem; color:#555; line-height:1.75; margin:6px 0 6px;}
+.gear{width:108px; height:108px; margin:8px auto 12px; display:grid; place-items:center; border-radius:999px; background:#f1f3f5; color:#bdc3c7; font-size:2.6rem; animation:spin 2s linear infinite;}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.status-box{margin:10px auto 0; max-width:420px; text-align:left; background:#f8fbfb; border:1px solid #dde7e6; border-radius:14px; padding:14px 16px; line-height:1.8; font-size:.95rem;}
+.elapsed-text{font-size:.9rem; color:var(--muted); margin-top:14px;}
+
+/* 結果表示エリア */
+.score-circle{width:140px; height:140px; border-radius:50%; background:#8BC34A; color:white; display:flex; flex-direction:column; justify-content:center; align-items:center; margin:6px auto 16px; box-shadow:0 8px 24px rgba(0,0,0,.12);}
+.score-value{font-size:3.2rem; font-weight:900; line-height:1;}
+.score-unit{font-size:.85rem; opacity:.85; margin-top:2px;}
+.score-label-text{text-align:center; color:var(--primary-dark); font-size:1.1rem; font-weight:800; margin-bottom:16px;}
+.sub-scores{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px;}
+.sub-score-card{background:#f5f8f7; border-radius:12px; padding:12px; text-align:center; border:1px solid var(--border);}
+.sub-score-card .label{font-size:.82rem; color:var(--muted);}
+.sub-score-card .value{font-size:1.7rem; font-weight:800; margin:4px 0;}
+.sub-score-card .raw{font-size:.74rem; color:var(--muted);}
+.section-title{font-size:1.05rem; font-weight:800; color:var(--primary-dark); margin:14px 0 10px; padding-bottom:6px; border-bottom:2px solid #B2DFDB; text-align:left;}
+.profile-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.profile-item{background:linear-gradient(135deg,#E0F2F1 0%,#F1F8E9 100%); border-radius:10px; padding:11px 13px; text-align:left;}
+.profile-item .icon-label{font-size:.78rem; color:#555; margin-bottom:3px;}
+.profile-item .value{font-size:.92rem; font-weight:700; color:#1B5E20;}
+.quality-info{display:flex; gap:8px; flex-wrap:wrap; font-size:.78rem; color:var(--muted); margin-top:10px;}
+.quality-info span{background:#ECEFF1; padding:3px 9px; border-radius:12px;}
+.quality-info span.warn{background:#FFF3E0; color:#E65100;}
+.disclaimer{font-size:.85rem; line-height:1.75; color:#555; background:#fff; border:1px solid #ebe1e1; border-radius:12px; padding:12px 14px; margin-top:14px; text-align:left;}
+details{margin-top:12px;}
+summary{cursor:pointer; color:var(--muted); font-size:.86rem; padding:6px 0;}
+.detail-table{width:100%; border-collapse:collapse; font-size:.82rem;}
+.detail-table th,.detail-table td{text-align:left; padding:5px 7px; border-bottom:1px solid var(--border);}
+.detail-table th{background:#F5F5F5; font-weight:700;}
+.detail-table td.num{text-align:right; font-variant-numeric:tabular-nums;}
+.error-box{background:#FFEBEE; color:#C62828; padding:14px; border-radius:10px; margin-top:14px; text-align:left;}
+
+.ok-overlay{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0); z-index:60; pointer-events:none;}
+.ok-overlay.active{display:flex;}
+.ok-overlay .ok-badge{width:min(70vw,220px); aspect-ratio:1/1; border-radius:999px; background:linear-gradient(135deg,#2e7d32,#43a047); display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; box-shadow:0 16px 40px rgba(46,125,50,.45); transform:scale(.3); opacity:0; animation:okPop 1050ms cubic-bezier(.18,.9,.3,1.2) forwards;}
+.ok-overlay .ok-check{font-size:5.5rem; line-height:1; font-weight:900; margin-bottom:2px;}
+.ok-overlay .ok-text{font-size:1.9rem; font-weight:900; letter-spacing:.08em;}
+@keyframes okPop{0%{transform:scale(.3);opacity:0;}25%{transform:scale(1.15);opacity:1;}45%{transform:scale(.96);opacity:1;}60%{transform:scale(1.02);opacity:1;}78%{transform:scale(1);opacity:1;}100%{transform:scale(1);opacity:0;}}
+.modal-bg{position:fixed; inset:0; background:rgba(20,30,35,.5); display:none; align-items:flex-end; justify-content:center; z-index:50;}
+.modal-bg.active{display:flex; animation:fadeIn .2s ease-out;}
+.modal{width:100%; background:#fff; border-radius:20px 20px 0 0; padding:20px 18px calc(var(--safe-bottom) + var(--cta-extra)); box-shadow:0 -10px 30px rgba(0,0,0,.12); animation:slideUp .28s ease-out;}
+@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.modal h3{color:var(--ng); font-size:1.1rem; margin-bottom:8px; display:flex; align-items:center; gap:6px;}
+.modal ul{margin:6px 0 12px 18px; line-height:1.7; color:#444; font-size:.94rem;}
+.modal-handle{width:42px; height:4px; background:#dde2e6; border-radius:999px; margin:0 auto 12px;}
+.cta-row{display:flex; gap:8px;}
+.cta-row .btn{flex:1;}
+</style>
 </head>
 <body>
+<script>
+(function(){
+  function setAppVH(){
+    var h = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+    document.documentElement.style.setProperty('--app-vh', h + 'px');
+  }
+  setAppVH();
+  window.addEventListener('resize', setAppVH);
+  window.addEventListener('orientationchange', function(){ setTimeout(setAppVH, 50); setTimeout(setAppVH, 300); });
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', setAppVH);
+    window.visualViewport.addEventListener('scroll', setAppVH);
+  }
+  setTimeout(setAppVH, 100);
+  setTimeout(setAppVH, 500);
+})();
+</script>
 
-<div class="container">
-    <h1>のどコンディション チェック</h1>
-    <p class="instruction">ボタンを押すと「3, 2, 1」の後に録音が始まります。<br>5秒間「あーーー」と発声し続けてください。</p>
-    
-    <button id="recordBtn">チェック開始</button>
-    <div id="status"></div>
+<header class="app-header">のどコンディション セルフチェック</header>
+<div class="stepper" id="stepper"></div>
 
-    <div id="resultBox" class="result-box">
-        <div class="score-circle" id="totalScoreBg">
-            <div id="totalScore">--</div>
-            <span>総合スコア</span>
-        </div>
-        <h3 id="scoreLabel" style="text-align: center; color: #2c3e50; margin-bottom: 20px;"></h3>
+<div class="main-container">
 
-        <h4>詳細スコア</h4>
-        <div class="sub-score">
-            <span>声の通り (CPP)</span><strong id="cppScore">--</strong>
-        </div>
-        <div class="sub-score">
-            <span>声のクリアさ (HNR)</span><strong id="hnrScore">--</strong>
-        </div>
-
-        <h4>声のプロフィール</h4>
-        <div class="voice-profile">
-            <div class="profile-item"><div class="profile-icon">🎵</div><b id="vpPitch">--</b></div>
-            <div class="profile-item"><div class="profile-icon">🌊</div><b id="vpStability">--</b></div>
-            <div class="profile-item"><div class="profile-icon">☀️</div><b id="vpBrightness">--</b></div>
-            <div class="profile-item"><div class="profile-icon">🍃</div><b id="vpSmoothness">--</b></div>
-        </div>
+  <!-- イントロ -->
+  <div id="screen-intro" class="screen active">
+    <div class="screen-body has-cta-float">
+      <h1>のどコンディション セルフチェック</h1>
+      <div class="intro-copy">
+        <p>このアプリは、5秒間「あー」と発声するだけで、今日の<strong>のどのコンディション</strong>をスコア化します。</p>
+        <p>声の通り、クリアさなどの音響特徴から、毎日の体調管理にお役立てください。</p>
+        <p>本サービスは医療機器ではありません。健康状態把握のための支援ツールとしてご利用ください。</p>
+      </div>
+      <p class="note">※ マイクの使用許可が必要です。静かな場所でご利用ください。</p>
     </div>
+    <div class="cta-float">
+      <button class="btn" onclick="startFromIntro()">チェックをはじめる</button>
+    </div>
+  </div>
+
+  <!-- 環境音チェック -->
+  <div id="screen-env-check" class="screen">
+    <div class="screen-body">
+      <span class="part-label">事前チェック 1／2</span>
+      <h2>環境音チェック</h2>
+      <div class="pre-icon">🔇</div>
+      <p class="intro-mini">録音の精度を保つため、まず周囲の静かさを5秒間チェックします。<br/>マイクの近くで音を立てずにお待ちください。</p>
+      <div class="meter-section" id="env-meter-section" style="display:none">
+        <div class="meter-label"><span>マイク入力レベル</span><span id="env-level-text">--</span></div>
+        <div class="meter-bg"><div class="meter-fill" id="env-meter"></div></div>
+        <div class="timer-text" id="env-timer" style="margin-top:6px;font-size:1.5rem">5</div>
+      </div>
+      <div class="qc-card" id="env-result" style="display:none"></div>
+      <p class="note">※ 周囲の音が大きい場合は、静かな場所へ移動して再度お試しください。</p>
+    </div>
+    <div class="cta-bar" id="env-btn-row">
+      <button class="btn" id="env-start-btn" onclick="startEnvCheck()">環境音チェックを開始</button>
+    </div>
+  </div>
+
+  <!-- マイクテスト -->
+  <div id="screen-mic-test" class="screen">
+    <div class="screen-body">
+      <span class="part-label">事前チェック 2／2</span>
+      <h2>マイクテスト</h2>
+      <div class="utterance-text">「あーーー」</div>
+      <p class="intro-mini">マイクに正しく声が届くか確認し、必要に応じて音量を自動調整します。<br/>カウントダウン後、3秒間「あーーー」と発声してください。</p>
+      <div class="countdown-321" id="cd-mic-test" style="display:none">３</div>
+      <div class="meter-section" id="mic-meter-section" style="display:none">
+        <div class="meter-label"><span>音声レベル</span><span id="mic-level-text">--</span></div>
+        <div class="meter-bg"><div class="meter-fill" id="mic-meter"></div></div>
+        <div class="timer-text" id="mic-timer" style="margin-top:6px;font-size:1.5rem">3</div>
+      </div>
+      <div class="qc-card" id="mic-result" style="display:none"></div>
+    </div>
+    <div class="cta-bar" id="mic-btn-row">
+      <button class="btn" id="mic-start-btn" onclick="startMicTest()">マイクテストを開始</button>
+    </div>
+  </div>
+
+  <!-- 本収録カウントダウン -->
+  <div id="screen-rec-cd" class="screen">
+    <div class="screen-body">
+      <span class="part-label">本収録</span>
+      <p class="guide-text">自然な声の大きさ・高さで5秒間出し続けてください。</p>
+      <div class="utterance-text">「あーーーー」</div>
+      <div class="countdown-321" id="cd-rec">３</div>
+    </div>
+  </div>
+
+  <!-- 本収録録音中 -->
+  <div id="screen-rec-main" class="screen">
+    <div class="screen-body">
+      <span class="part-label">本収録</span>
+      <p class="guide-text">自然な声の大きさ・高さで5秒間出し続けてください。</p>
+      <div class="utterance-text">「あーーーー」</div>
+      <div class="rec-indicator"><span class="rec-dot"></span>録音中</div>
+      <canvas id="canvas-rec" width="680" height="88"></canvas>
+      <div class="timer-text" id="timer-rec">5</div>
+    </div>
+  </div>
+
+  <!-- 解析中 -->
+  <div id="screen-analyzing" class="screen">
+    <div class="screen-body">
+      <div class="gear">⚙️</div>
+      <h2>解析中</h2>
+      <div class="status-box">
+        <div>・音声データを送信しています</div>
+        <div>・サーバーで音響解析を実行しています</div>
+        <div>・のどコンディションスコアを算出しています</div>
+      </div>
+      <div class="elapsed-text">経過時間: <span id="elapsed-sec">0</span> 秒</div>
+    </div>
+  </div>
+
+  <!-- 結果 -->
+  <div id="screen-result" class="screen">
+    <div class="screen-body">
+      <h2>セルフチェック結果</h2>
+      <div class="score-circle" id="totalScoreBg">
+        <div class="score-value" id="totalScore">--</div>
+        <div class="score-unit">/100</div>
+      </div>
+      <div class="score-label-text" id="scoreLabel">--</div>
+
+      <div class="section-title">サブスコア</div>
+      <div class="sub-scores">
+        <div class="sub-score-card">
+          <div class="label">声の通り (CPP)</div>
+          <div class="value" id="cppScore">--</div>
+          <div class="raw" id="cppRaw">--</div>
+        </div>
+        <div class="sub-score-card">
+          <div class="label">声のクリアさ (HNR)</div>
+          <div class="value" id="hnrScore">--</div>
+          <div class="raw" id="hnrRaw">--</div>
+        </div>
+      </div>
+
+      <div class="section-title">あなたの声プロフィール</div>
+      <div class="profile-grid" id="profileGrid"></div>
+
+      <div class="quality-info" id="qualityInfo"></div>
+
+      <details>
+        <summary>📊 解析データの詳細</summary>
+        <table class="detail-table" id="detailTable"></table>
+      </details>
+
+      <div class="disclaimer">
+        本サービスは医療機器ではありません。疾病の診断・治療・予防を行うものではなく、ご自身の健康状態把握のための支援ツールです。
+      </div>
+    </div>
+    <div class="cta-bar">
+      <button class="btn btn-sub" onclick="resetApp()">もう一度チェック</button>
+    </div>
+  </div>
+
+  <!-- エラー画面 -->
+  <div id="screen-error" class="screen">
+    <div class="screen-body">
+      <h2>解析に失敗しました</h2>
+      <div class="error-box" id="errorMessage"></div>
+    </div>
+    <div class="cta-bar">
+      <button class="btn btn-sub" onclick="resetApp()">最初からやり直す</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- OK演出オーバーレイ -->
+<div class="ok-overlay" id="ok-overlay" aria-hidden="true">
+  <div class="ok-badge">
+    <div class="ok-check">✓</div>
+    <div class="ok-text">OK</div>
+  </div>
+</div>
+
+<!-- 品質NGモーダル -->
+<div class="modal-bg" id="qc-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>❌ 録音品質をご確認ください</h3>
+    <p style="margin:0 0 6px;color:#555;font-size:.94rem">うまく取得できなかった可能性があります：</p>
+    <ul id="qc-modal-reasons"></ul>
+    <p style="margin:0 0 12px;color:#555;font-size:.94rem">同じ発声をもう一度お願いします。</p>
+    <button class="btn btn-ng" onclick="retryRecording()">もう一度録音する</button>
+  </div>
 </div>
 
 <script>
-    // ★ Cloud RunのAPI URLを設定してください（/docs は外し、エンドポイントのパスを合わせます）
-    // READMEのcurlコマンドを見る限り /api/v1/voice/analyze と推測します
-    const API_URL = "https://voice-api-711078318525.asia-northeast1.run.app/api/v1/voice/analyze";
+// ==================== API 設定 ====================
+const API_URL = "https://voice-api-711078318525.asia-northeast1.run.app/api/v1/voice/analyze";
+const API_KEY = "my_super_secret_key_2026";
 
-    const recordBtn = document.getElementById('recordBtn');
-    const statusDiv = document.getElementById('status');
-    const resultBox = document.getElementById('resultBox');
+// ==================== グローバル状態 ====================
+let audioCtx=null, analyser=null, source=null, gainNode=null, processor=null, muteGain=null, dataArray=null;
+let isCapturing=false;
+let currentBuffers=[];
+let currentStep=0;
+let noiseFloor=0.005;
+let calibrationGain=1.0;
+let recording=null;  // 単一の録音データを保持
 
-    let mediaRecorder;
-    let audioChunks = [];
+const steps=[
+  {id:'screen-intro'},
+  {id:'screen-env-check'},
+  {id:'screen-mic-test'},
+  {id:'screen-rec-cd'},
+  {id:'screen-rec-main'},
+  {id:'screen-analyzing'},
+  {id:'screen-result'}
+];
+const REC_CD_IDX=3, REC_MAIN_IDX=4, ANALYZING_IDX=5, RESULT_IDX=6;
 
-    recordBtn.addEventListener('click', async () => {
-        try {
-            // マイクへのアクセス要求
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            startCountdown(stream);
-        } catch (err) {
-            alert('マイクのアクセスが許可されませんでした。ブラウザの設定を確認してください。');
-            console.error(err);
-        }
+// ==================== ステッパー ====================
+function initStepper(){
+  const stepper=document.getElementById('stepper');
+  stepper.innerHTML='';
+  steps.forEach((_,i)=>{
+    const dot=document.createElement('div');
+    dot.className='step-dot'+(i===currentStep?' active':'');
+    stepper.appendChild(dot);
+  });
+}
+function showStep(idx){
+  document.querySelectorAll('.screen').forEach(el=>el.classList.remove('active'));
+  document.getElementById(steps[idx].id).classList.add('active');
+  currentStep=idx;
+  initStepper();
+  fitCanvases();
+}
+function fitCanvases(){
+  document.querySelectorAll('canvas').forEach(c=>{
+    const rect=c.getBoundingClientRect();
+    const tw=Math.max(280,Math.floor(rect.width||c.parentElement.clientWidth||320));
+    if(c.width!==tw) c.width=tw;
+    if(!c.height||c.height<60) c.height=74;
+  });
+}
+
+// ==================== カウントダウン ====================
+function start321(labelId,callback){
+  const el=document.getElementById(labelId);
+  if(!el){callback();return;}
+  el.style.display='';
+  const seq=['３','２','１','開始'];
+  let i=0; el.textContent=seq[i];
+  const t=setInterval(()=>{
+    i++;
+    if(i<seq.length) el.textContent=seq[i];
+    if(i>=seq.length-1){
+      clearInterval(t);
+      setTimeout(callback,450);
+    }
+  },700);
+}
+
+// ==================== OK演出 ====================
+function showOKOverlay(){
+  return new Promise(resolve=>{
+    const el=document.getElementById('ok-overlay');
+    if(!el){resolve();return;}
+    el.classList.remove('active');
+    void el.offsetWidth;
+    const badge=el.querySelector('.ok-badge');
+    if(badge){ badge.style.animation='none'; void badge.offsetWidth; badge.style.animation=''; }
+    el.classList.add('active');
+    setTimeout(()=>{ el.classList.remove('active'); resolve(); },1050);
+  });
+}
+
+// ==================== マイク初期化 ====================
+async function ensureMic(){
+  if(audioCtx){
+    if(audioCtx.state==='suspended') await audioCtx.resume();
+    return true;
+  }
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    alert('このブラウザはマイク録音に対応していません。'); return false;
+  }
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({
+      audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}
     });
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    source=audioCtx.createMediaStreamSource(stream);
+    gainNode=audioCtx.createGain();
+    gainNode.gain.value=1.0;
+    analyser=audioCtx.createAnalyser();
+    analyser.fftSize=256;
+    dataArray=new Uint8Array(analyser.frequencyBinCount);
+    processor=audioCtx.createScriptProcessor(4096,1,1);
+    muteGain=audioCtx.createGain();
+    muteGain.gain.value=0;
+    source.connect(gainNode);
+    gainNode.connect(analyser);
+    gainNode.connect(processor);
+    processor.connect(muteGain);
+    muteGain.connect(audioCtx.destination);
+    processor.onaudioprocess=function(ev){
+      if(!isCapturing) return;
+      const inp=ev.inputBuffer.getChannelData(0);
+      currentBuffers.push(new Float32Array(inp));
+    };
+    return true;
+  }catch(e){
+    console.error(e);
+    alert('マイクの使用許可が必要です。ブラウザの設定をご確認ください。');
+    return false;
+  }
+}
 
-    function startCountdown(stream) {
-        recordBtn.disabled = true;
-        resultBox.style.display = 'none';
-        let count = 3;
-        statusDiv.innerText = count;
+// ==================== イントロから開始 ====================
+async function startFromIntro(){
+  const ok=await ensureMic();
+  if(!ok) return;
+  showStep(1);  // 環境音チェックへ
+}
 
-        const countdownInterval = setInterval(() => {
-            count--;
-            if (count > 0) {
-                statusDiv.innerText = count;
-            } else {
-                clearInterval(countdownInterval);
-                startRecording(stream);
-            }
-        }, 1000);
+// ==================== レベルメーター ====================
+function startLevelMeter(meterId,textId){
+  const data=new Uint8Array(analyser.frequencyBinCount);
+  function loop(){
+    if(!isCapturing) return;
+    analyser.getByteTimeDomainData(data);
+    let s=0;
+    for(let i=0;i<data.length;i++){ const v=(data[i]-128)/128; s+=v*v; }
+    const rms=Math.sqrt(s/data.length);
+    const pct=Math.min(100,rms*350);
+    const m=document.getElementById(meterId); const t=document.getElementById(textId);
+    if(m) m.style.width=pct+'%';
+    if(t) t.textContent=(rms*100).toFixed(1);
+    requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+// ==================== 環境音チェック ====================
+async function startEnvCheck(){
+  const btn=document.getElementById('env-start-btn');
+  btn.disabled=true;
+  document.getElementById('env-result').style.display='none';
+  document.getElementById('env-meter-section').style.display='block';
+  document.getElementById('env-timer').textContent='5';
+  if(gainNode) gainNode.gain.value=1.0;
+  calibrationGain=1.0;
+  currentBuffers=[];
+  isCapturing=true;
+  startLevelMeter('env-meter','env-level-text');
+  let t=5;
+  await new Promise(res=>{
+    const it=setInterval(()=>{
+      t--;
+      document.getElementById('env-timer').textContent=Math.max(0,t);
+      if(t<=0){clearInterval(it);res();}
+    },1000);
+  });
+  isCapturing=false;
+  const merged=mergeFloat(currentBuffers);
+  const rms=computeRMS(merged);
+  noiseFloor=Math.max(rms,0.001);
+  const verdict=rms<0.01?'OK':(rms<=0.03?'WARN':'NG');
+  const card=document.getElementById('env-result');
+  card.style.display='block';
+  card.className='qc-card '+verdict.toLowerCase();
+  const row=document.getElementById('env-btn-row');
+  if(verdict==='OK'){
+    card.innerHTML='<div class="qc-title ok">✅ 良好</div>'+
+      '<ul class="qc-list"><li>静かな環境です（環境RMS: '+rms.toFixed(4)+'）</li><li>次のステップへ進めます</li></ul>';
+    row.innerHTML='<button class="btn" onclick="goToMicTest()">マイクテストへ進む</button>';
+  }else if(verdict==='WARN'){
+    card.innerHTML='<div class="qc-title warn">⚠️ 許容範囲</div>'+
+      '<ul class="qc-list"><li>少し周囲の音があります（環境RMS: '+rms.toFixed(4)+'）</li><li>このまま進めますが、できれば静かな場所が望ましいです</li></ul>';
+    row.innerHTML='<div class="cta-row"><button class="btn" onclick="goToMicTest()">マイクテストへ進む</button><button class="btn btn-sub" onclick="retryEnvCheck()">もう一度確認</button></div>';
+  }else{
+    card.innerHTML='<div class="qc-title ng">❌ 周囲の音が大きい</div>'+
+      '<ul class="qc-list"><li>環境RMSが高い値です（'+rms.toFixed(4)+'）</li><li>静かな場所へ移動してから再度お試しください</li></ul>';
+    row.innerHTML='<button class="btn btn-ng" onclick="retryEnvCheck()">もう一度確認</button>';
+  }
+  btn.disabled=false;
+}
+function retryEnvCheck(){
+  document.getElementById('env-result').style.display='none';
+  document.getElementById('env-meter-section').style.display='none';
+  document.getElementById('env-btn-row').innerHTML='<button class="btn" id="env-start-btn" onclick="startEnvCheck()">環境音チェックを開始</button>';
+}
+function goToMicTest(){ showStep(2); }
+
+// ==================== マイクテスト（自動較正） ====================
+async function startMicTest(){
+  const btn=document.getElementById('mic-start-btn');
+  btn.disabled=true;
+  document.getElementById('mic-result').style.display='none';
+  document.getElementById('mic-meter-section').style.display='none';
+  const cd=document.getElementById('cd-mic-test');
+  cd.style.display='flex';
+  if(gainNode) gainNode.gain.value=1.0;
+  if(calibrationGain && calibrationGain!==1.0){
+    noiseFloor = noiseFloor / calibrationGain;
+  }
+  calibrationGain=1.0;
+  await new Promise(res=>start321('cd-mic-test',res));
+  cd.style.display='none';
+  document.getElementById('mic-meter-section').style.display='block';
+  document.getElementById('mic-timer').textContent='3';
+  currentBuffers=[];
+  isCapturing=true;
+  startLevelMeter('mic-meter','mic-level-text');
+  let t=3;
+  await new Promise(res=>{
+    const it=setInterval(()=>{
+      t--;
+      document.getElementById('mic-timer').textContent=Math.max(0,t);
+      if(t<=0){clearInterval(it);res();}
+    },1000);
+  });
+  isCapturing=false;
+  const merged=mergeFloat(currentBuffers);
+  const voiceRMS=computeRMS(merged);
+  const peak=computePeak(merged);
+  const snr=voiceRMS/Math.max(noiseFloor,0.0001);
+  const TARGET=0.10;
+  let gain = (voiceRMS>0.0005) ? (TARGET / voiceRMS) : 1.0;
+  if(gain<1.0) gain=1.0;
+  if(gain>8.0) gain=8.0;
+  calibrationGain=gain;
+  if(gainNode) gainNode.gain.value=calibrationGain;
+  noiseFloor = noiseFloor * calibrationGain;
+  const postRMS = voiceRMS * calibrationGain;
+  let verdict='OK', reasons=[];
+  if(peak>=0.98){verdict='NG';reasons.push('音が大きすぎる可能性があります（クリッピング）。少しマイクから離れてください。');}
+  if(snr<4){verdict='NG';reasons.push('周囲との差が不足しています（SNR: '+snr.toFixed(1)+'）。静かな場所で再度お試しください。');}
+  if(voiceRMS<0.003 && calibrationGain>=8.0){
+    verdict='NG';
+    reasons.push('声が非常に小さく検出されました。マイクに近づいて、もう少し大きな声でお願いします。');
+  }
+  if(verdict==='OK' && snr<10) verdict='WARN';
+  const card=document.getElementById('mic-result');
+  card.style.display='block';
+  card.className='qc-card '+verdict.toLowerCase();
+  const row=document.getElementById('mic-btn-row');
+  const calibLine = (calibrationGain>1.01)
+    ? '<li><span class="calib">音量を最適化しました（×'+calibrationGain.toFixed(1)+'）</span></li>'
+    : '<li><span class="calib">音量は十分でした（調整なし）</span></li>';
+  const detailLine = '<li>声量: '+voiceRMS.toFixed(3)+' → '+postRMS.toFixed(3)+'</li>';
+  if(verdict==='OK'){
+    card.innerHTML='<div class="qc-title ok">✅ マイクOK</div>'+
+      '<ul class="qc-list">'+calibLine+detailLine+'<li>SNR: '+snr.toFixed(1)+'</li><li>本収録に進めます</li></ul>';
+    row.innerHTML='<button class="btn" onclick="goToRecording()">本収録を開始する</button>';
+  }else if(verdict==='WARN'){
+    card.innerHTML='<div class="qc-title warn">⚠️ 一部許容</div>'+
+      '<ul class="qc-list">'+calibLine+detailLine+'<li>SNR: '+snr.toFixed(1)+'（やや低め）</li><li>このまま進めますが、より静かな環境を推奨します</li></ul>';
+    row.innerHTML='<div class="cta-row"><button class="btn" onclick="goToRecording()">本収録を開始する</button><button class="btn btn-sub" onclick="retryMicTest()">もう一度テスト（再較正）</button></div>';
+  }else{
+    card.innerHTML='<div class="qc-title ng">❌ マイクNG</div>'+
+      '<ul class="qc-list">'+reasons.map(r=>'<li>'+r+'</li>').join('')+'</ul>';
+    row.innerHTML='<button class="btn btn-ng" onclick="retryMicTest()">もう一度テスト（再較正）</button>';
+  }
+  btn.disabled=false;
+}
+function retryMicTest(){
+  document.getElementById('mic-result').style.display='none';
+  document.getElementById('mic-meter-section').style.display='none';
+  document.getElementById('mic-btn-row').innerHTML='<button class="btn" id="mic-start-btn" onclick="startMicTest()">マイクテストを開始</button>';
+}
+
+// ==================== 本収録へ ====================
+function goToRecording(){
+  showStep(REC_CD_IDX);
+  start321('cd-rec',()=>{
+    showStep(REC_MAIN_IDX);
+    startMainRecording();
+  });
+}
+
+// ==================== 本収録（5秒） ====================
+function startMainRecording(){
+  const label=document.getElementById('timer-rec');
+  let time=5;
+  label.textContent=time;
+  currentBuffers=[];
+  isCapturing=true;
+  drawVisual('canvas-rec');
+  const t=setInterval(()=>{
+    time--;
+    label.textContent=Math.max(0,time);
+    if(time<=0){
+      clearInterval(t);
+      isCapturing=false;
+      finalizeRecording();
     }
+  },1000);
+}
 
-    function startRecording(stream) {
-        statusDiv.innerText = "🔴 録音中... 「あーー」";
-        statusDiv.style.color = "#e74c3c";
-        
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
+function finalizeRecording(){
+  const merged=mergeFloat(currentBuffers);
+  const wavBlob=encodeWAV(merged,audioCtx.sampleRate);
+  recording={blob:wavBlob, samples:merged, sampleRate:audioCtx.sampleRate};
+  
+  // 品質チェック
+  const qc=evaluateQuality();
+  if(qc.verdict==='NG'){
+    showQCModal(qc.reasons);
+  }else{
+    showOKOverlay().then(()=>sendToAPI());
+  }
+}
 
-        mediaRecorder.ondataavailable = event => {
-            if (event.data.size > 0) {
-                audioChunks.push(event.data);
-            }
-        };
+// ==================== 品質チェック ====================
+function evaluateQuality(){
+  if(!recording || !recording.samples || recording.samples.length < audioCtx.sampleRate*0.5){
+    return {verdict:'NG',reasons:['録音データが取得できませんでした。']};
+  }
+  const samples=recording.samples; const sr=recording.sampleRate;
+  const rms=computeRMS(samples);
+  const peak=computePeak(samples);
+  const snr=rms/Math.max(noiseFloor,0.0001);
+  const voicedRatio=computeVoicedRatio(samples,sr,noiseFloor);
+  let verdict='OK'; let reasons=[];
+  if(rms<0.02){verdict='NG';reasons.push('声が小さい可能性があります（RMS: '+rms.toFixed(3)+'）。マイクに近づいてください。');}
+  else if(rms>0.15 || peak>=0.98){verdict='NG';reasons.push('声が大きすぎる可能性があります（クリッピング）。少しマイクから離れてください。');}
+  if(snr<4){verdict='NG';reasons.push('周囲の音と発声の差が不足しています（SNR: '+snr.toFixed(1)+'）。静かな環境で再度お試しください。');}
+  else if(snr<8 && verdict==='OK') verdict='WARN';
+  if(voicedRatio<0.3){verdict='NG';reasons.push('発声がほとんど検出できませんでした（有効区間: '+(voicedRatio*100).toFixed(0)+'%）。ガイドに合わせて発声してください。');}
+  else if(voicedRatio<0.5 && verdict==='OK') verdict='WARN';
+  return {verdict:verdict,reasons:reasons};
+}
 
-        mediaRecorder.onstop = () => {
-            statusDiv.innerText = "⏳ 解析中...";
-            statusDiv.style.color = "#3498db";
-            
-            // 録音データをBlob化 (ブラウザ標準のフォーマット)
-            const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
-            sendToAPI(audioBlob);
-            
-            // マイクのストリームを停止
-            stream.getTracks().forEach(track => track.stop());
-        };
+function showQCModal(reasons){
+  const ul=document.getElementById('qc-modal-reasons'); ul.innerHTML='';
+  reasons.forEach(r=>{const li=document.createElement('li'); li.textContent=r; ul.appendChild(li);});
+  document.getElementById('qc-modal').classList.add('active');
+}
+function hideQCModal(){ document.getElementById('qc-modal').classList.remove('active'); }
+function retryRecording(){
+  hideQCModal();
+  recording=null;
+  goToRecording();
+}
 
-        mediaRecorder.start();
+// ==================== API送信 ====================
+async function sendToAPI(){
+  showStep(ANALYZING_IDX);
+  const elapsedEl=document.getElementById('elapsed-sec');
+  const startTime=Date.now();
+  const elapsedInterval=setInterval(()=>{
+    elapsedEl.textContent=Math.floor((Date.now()-startTime)/1000);
+  },500);
 
-        // 5秒間録音して自動停止
-        setTimeout(() => {
-            mediaRecorder.stop();
-        }, 5000);
+  const formData=new FormData();
+  formData.append("file",recording.blob,"throat_check.wav");
+
+  const controller=new AbortController();
+  const timeoutId=setTimeout(()=>controller.abort(),180000);
+
+  try{
+    const response=await fetch(API_URL,{
+      method:"POST",
+      headers:{"X-API-Key":API_KEY},
+      body:formData,
+      signal:controller.signal
+    });
+    clearTimeout(timeoutId);
+    clearInterval(elapsedInterval);
+
+    if(!response.ok){
+      const errText=await response.text();
+      throw new Error(`APIエラー: ${response.status} - ${errText}`);
     }
+    const data=await response.json();
+    displayResults(data);
+  }catch(error){
+    clearTimeout(timeoutId);
+    clearInterval(elapsedInterval);
+    console.error("送信エラー:",error);
+    showError(error.name==='AbortError' ? '解析がタイムアウトしました。もう一度お試しください。' : error.message);
+  }
+}
 
-    async function sendToAPI(blob) {
-        const formData = new FormData();
-        // API側でファイル拡張子を気にしないか、ffmpegがよしなに処理してくれることを期待して送信
-        formData.append("file", blob, "voice_record.wav"); 
+// ==================== 結果表示 ====================
+function displayResults(data){
+  // 総合スコア
+  const total=data.throat_score.total;
+  document.getElementById('totalScore').innerText=Math.round(total.value);
+  document.getElementById('totalScoreBg').style.background=total.color_hint;
+  document.getElementById('scoreLabel').innerText=total.level_label;
 
-        try {
-            const response = await fetch(API_URL, {
-                method: "POST",
-                headers: {
-                    // ここがコマンドの文字列と完全一致している必要があります
-                    "X-API-Key": "my_super_secret_key_2026" 
-                },
-                body: formData
-            });
-            
-            if (!response.ok) {
-                throw new Error(`APIエラー: ${response.status}`);
-            }
+  // サブスコア
+  const subs=data.throat_score.sub_scores;
+  document.getElementById('cppScore').innerText=Math.round(subs.voice_projection.score);
+  document.getElementById('cppRaw').innerText=subs.voice_projection.raw_value.toFixed(2)+' '+subs.voice_projection.raw_unit;
+  document.getElementById('hnrScore').innerText=Math.round(subs.voice_clarity.score);
+  document.getElementById('hnrRaw').innerText=subs.voice_clarity.raw_value.toFixed(2)+' '+subs.voice_clarity.raw_unit;
 
-            const data = await response.json();
-            displayResults(data);
-            
-        } catch (error) {
-            console.error("送信エラー:", error);
-            statusDiv.innerText = "❌ 解析に失敗しました";
-            recordBtn.disabled = false;
-        }
+  // プロフィール
+  const profileGrid=document.getElementById('profileGrid');
+  profileGrid.innerHTML='';
+  for(const [key,item] of Object.entries(data.voice_profile)){
+    const div=document.createElement('div');
+    div.className='profile-item';
+    div.innerHTML=`<div class="icon-label">${item.icon} ${item.label}</div><div class="value">${item.display_value}</div>`;
+    profileGrid.appendChild(div);
+  }
+
+  // 品質情報
+  const q=data.quality;
+  const qualityInfo=document.getElementById('qualityInfo');
+  const statusClass=q.overall_status==='ok'?'':'warn';
+  qualityInfo.innerHTML=`
+    <span class="${statusClass}">状態: ${q.overall_status}</span>
+    <span>SNR: ${q.snr_db ?? '--'} dB</span>
+    <span>有声率: ${q.voiced_frame_ratio!==null?(q.voiced_frame_ratio*100).toFixed(0)+'%':'--'}</span>
+    <span>処理: ${(data.meta.processing_time_ms/1000).toFixed(1)}秒</span>
+  `;
+
+  // 詳細テーブル
+  const detailTable=document.getElementById('detailTable');
+  detailTable.innerHTML=`
+    <tr><th>指標</th><th class="num">値</th><th>単位</th></tr>
+    ${Object.entries(data.raw_features).map(([k,v])=>`
+      <tr><td>${v.description}</td><td class="num">${v.value?.toFixed(3) ?? '--'}</td><td>${v.unit}</td></tr>
+    `).join('')}
+  `;
+
+  showStep(RESULT_IDX);
+}
+
+function showError(msg){
+  document.getElementById('errorMessage').innerText=msg;
+  document.querySelectorAll('.screen').forEach(el=>el.classList.remove('active'));
+  document.getElementById('screen-error').classList.add('active');
+}
+
+// ==================== 描画 ====================
+function drawVisual(canvasId){
+  const canvas=document.getElementById(canvasId);
+  if(!canvas||!analyser) return;
+  const ctx=canvas.getContext('2d');
+  function draw(){
+    const visible=canvas.closest('.screen') && canvas.closest('.screen').classList.contains('active');
+    if(!visible) return;
+    requestAnimationFrame(draw);
+    analyser.getByteFrequencyData(dataArray);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const barWidth=(canvas.width/dataArray.length)*1.8;
+    let x=0;
+    for(let i=0;i<dataArray.length;i++){
+      const h=dataArray[i]/2;
+      ctx.fillStyle='rgb(0,121,107)';
+      ctx.fillRect(x,canvas.height-h,Math.max(1,barWidth),h);
+      x+=barWidth+1;
+      if(x>canvas.width) break;
     }
+  }
+  draw();
+}
 
-    function displayResults(data) {
-        statusDiv.innerText = "✅ 解析完了！";
-        statusDiv.style.color = "#27ae60";
-        recordBtn.disabled = false;
-        recordBtn.innerText = "もう一度チェック";
+// ==================== ユーティリティ ====================
+function computeRMS(arr){
+  if(!arr||arr.length===0) return 0;
+  let s=0; for(let i=0;i<arr.length;i++) s+=arr[i]*arr[i];
+  return Math.sqrt(s/arr.length);
+}
+function computePeak(arr){
+  let m=0;
+  for(let i=0;i<arr.length;i++){ const a=Math.abs(arr[i]); if(a>m) m=a; }
+  return m;
+}
+function computeVoicedRatio(samples,sr,noise){
+  const fs=Math.floor(sr*0.03); const hop=Math.floor(fs/2);
+  if(fs<=0||samples.length<fs) return 0;
+  const thr=Math.max(noise*2.5,0.012);
+  let total=0, voiced=0;
+  for(let i=0;i+fs<samples.length;i+=hop){
+    let s=0; for(let j=0;j<fs;j++) s+=samples[i+j]*samples[i+j];
+    if(Math.sqrt(s/fs)>thr) voiced++;
+    total++;
+  }
+  return total>0?voiced/total:0;
+}
+function mergeFloat(arr){
+  let len=0; for(const b of arr) len+=b.length;
+  const out=new Float32Array(len); let off=0;
+  for(const b of arr){ out.set(b,off); off+=b.length; }
+  return out;
+}
+function encodeWAV(samples,sampleRate){
+  const bps=2;
+  const buffer=new ArrayBuffer(44+samples.length*bps);
+  const view=new DataView(buffer);
+  writeString(view,0,'RIFF');
+  view.setUint32(4,36+samples.length*bps,true);
+  writeString(view,8,'WAVE'); writeString(view,12,'fmt ');
+  view.setUint32(16,16,true); view.setUint16(20,1,true); view.setUint16(22,1,true);
+  view.setUint32(24,sampleRate,true); view.setUint32(28,sampleRate*bps,true);
+  view.setUint16(32,bps,true); view.setUint16(34,16,true);
+  writeString(view,36,'data'); view.setUint32(40,samples.length*bps,true);
+  floatTo16BitPCM(view,44,samples);
+  return new Blob([view],{type:'audio/wav'});
+}
+function writeString(view,offset,s){ for(let i=0;i<s.length;i++) view.setUint8(offset+i,s.charCodeAt(i)); }
+function floatTo16BitPCM(view,offset,input){
+  for(let i=0;i<input.length;i++,offset+=2){
+    const s=Math.max(-1,Math.min(1,input[i]));
+    view.setInt16(offset, s<0 ? s*0x8000 : s*0x7FFF, true);
+  }
+}
 
-        // JSONデータから値を画面にセット
-        document.getElementById('totalScore').innerText = Math.round(data.throat_score.total.value);
-        document.getElementById('totalScoreBg').style.backgroundColor = data.throat_score.total.color_hint;
-        document.getElementById('scoreLabel').innerText = data.throat_score.total.level_label;
-        
-        document.getElementById('cppScore').innerText = Math.round(data.throat_score.sub_scores.voice_projection.score) + " 点";
-        document.getElementById('hnrScore').innerText = Math.round(data.throat_score.sub_scores.voice_clarity.score) + " 点";
+// ==================== リセット ====================
+function resetApp(){
+  recording=null;
+  isCapturing=false; currentBuffers=[];
+  calibrationGain=1.0;
+  if(gainNode) gainNode.gain.value=1.0;
+  showStep(0);
+}
 
-        document.getElementById('vpPitch').innerText = data.voice_profile.pitch_height.display_value;
-        document.getElementById('vpStability').innerText = data.voice_profile.pitch_stability.display_value;
-        document.getElementById('vpBrightness').innerText = data.voice_profile.brightness.display_value;
-        document.getElementById('vpSmoothness').innerText = data.voice_profile.smoothness.display_value;
-
-        // 結果エリアを表示
-        resultBox.style.display = 'block';
-    }
+window.addEventListener('resize',fitCanvases);
+window.addEventListener('orientationchange', ()=> setTimeout(fitCanvases, 200));
+document.addEventListener('DOMContentLoaded',()=>{ fitCanvases(); initStepper(); });
 </script>
 </body>
 </html>
