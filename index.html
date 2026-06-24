@@ -39,6 +39,19 @@ header.app-header{
   font-weight:800; color:var(--primary); font-size:0.98rem;
   letter-spacing:.02em; display:flex; align-items:center; min-height:54px;
 }
+.mode-badge{
+  margin-left:auto;
+  font-size:.72rem;
+  background:#fff8e1;
+  color:#856404;
+  padding:3px 9px;
+  border-radius:999px;
+  font-weight:700;
+  letter-spacing:.02em;
+}
+.mode-badge.strict{background:#e8f5e9; color:#1b5e20;}
+.mode-badge.normal{background:#e3f2fd; color:#0d47a1;}
+.mode-badge.poc{background:#fff8e1; color:#856404;}
 .stepper{
   display:flex; justify-content:center; gap:5px;
   padding:8px 12px; background:#fff;
@@ -99,6 +112,70 @@ canvas{width:100%; height:74px; background:#fafafa; border:1px solid #eef1f4; bo
 .status-box{margin:10px auto 0; max-width:420px; text-align:left; background:#f8fbfb; border:1px solid #dde7e6; border-radius:14px; padding:14px 16px; line-height:1.8; font-size:.95rem;}
 .elapsed-text{font-size:.9rem; color:var(--muted); margin-top:14px;}
 
+/* モード選択 */
+.mode-selector{
+  margin-top:14px;
+  text-align:left;
+  background:#f8fbfb;
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:14px;
+}
+.mode-selector-title{
+  font-size:.92rem;
+  font-weight:800;
+  color:var(--primary-dark);
+  margin-bottom:8px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.mode-selector-desc{
+  font-size:.82rem;
+  color:var(--muted);
+  margin-bottom:10px;
+  line-height:1.6;
+}
+.mode-buttons{
+  display:flex;
+  gap:6px;
+}
+.mode-btn{
+  flex:1;
+  padding:10px 6px;
+  border-radius:10px;
+  border:1.5px solid #d9dfe5;
+  background:#fff;
+  font-size:.85rem;
+  font-weight:700;
+  color:#445;
+  cursor:pointer;
+  transition:all .15s;
+  min-height:44px;
+}
+.mode-btn:active{transform:translateY(1px);}
+.mode-btn.active{
+  background:var(--primary);
+  color:#fff;
+  border-color:var(--primary);
+  box-shadow:0 4px 10px rgba(0,121,107,.2);
+}
+.mode-btn-desc{
+  font-size:.7rem;
+  font-weight:500;
+  opacity:.85;
+  margin-top:2px;
+}
+.mode-hint{
+  font-size:.76rem;
+  color:var(--muted);
+  margin-top:8px;
+  padding:6px 8px;
+  background:#fff;
+  border-radius:6px;
+  border-left:3px solid var(--primary);
+}
+
 /* 結果表示エリア */
 .score-circle{width:140px; height:140px; border-radius:50%; background:#8BC34A; color:white; display:flex; flex-direction:column; justify-content:center; align-items:center; margin:6px auto 16px; box-shadow:0 8px 24px rgba(0,0,0,.12);}
 .score-value{font-size:3.2rem; font-weight:900; line-height:1;}
@@ -117,6 +194,18 @@ canvas{width:100%; height:74px; background:#fafafa; border:1px solid #eef1f4; bo
 .quality-info{display:flex; gap:8px; flex-wrap:wrap; font-size:.78rem; color:var(--muted); margin-top:10px;}
 .quality-info span{background:#ECEFF1; padding:3px 9px; border-radius:12px;}
 .quality-info span.warn{background:#FFF3E0; color:#E65100;}
+.mode-info-result{
+  background:#fff8e1;
+  border:1px solid #f5d58a;
+  border-radius:10px;
+  padding:10px 12px;
+  margin-top:12px;
+  font-size:.84rem;
+  color:#856404;
+  text-align:left;
+}
+.mode-info-result.strict{background:#e8f5e9; border-color:#bfe5c1; color:#1b5e20;}
+.mode-info-result.normal{background:#e3f2fd; border-color:#a5cdf5; color:#0d47a1;}
 .disclaimer{font-size:.85rem; line-height:1.75; color:#555; background:#fff; border:1px solid #ebe1e1; border-radius:12px; padding:12px 14px; margin-top:14px; text-align:left;}
 details{margin-top:12px;}
 summary{cursor:pointer; color:var(--muted); font-size:.86rem; padding:6px 0;}
@@ -162,7 +251,10 @@ summary{cursor:pointer; color:var(--muted); font-size:.86rem; padding:6px 0;}
 })();
 </script>
 
-<header class="app-header">のどコンディション セルフチェック</header>
+<header class="app-header">
+  のどコンディション セルフチェック
+  <span class="mode-badge poc" id="mode-badge">PoC</span>
+</header>
 <div class="stepper" id="stepper"></div>
 
 <div class="main-container">
@@ -176,6 +268,30 @@ summary{cursor:pointer; color:var(--muted); font-size:.86rem; padding:6px 0;}
         <p>声の通り、クリアさなどの音響特徴から、毎日の体調管理にお役立てください。</p>
         <p>本サービスは医療機器ではありません。健康状態把握のための支援ツールとしてご利用ください。</p>
       </div>
+
+      <!-- ★ モード選択UI -->
+      <div class="mode-selector">
+        <div class="mode-selector-title">⚙️ 品質チェックモード</div>
+        <div class="mode-selector-desc">録音環境に合わせて品質チェックの厳しさを選択できます。</div>
+        <div class="mode-buttons">
+          <button class="mode-btn" data-mode="STRICT" onclick="setMode('STRICT')">
+            厳格
+            <div class="mode-btn-desc">静音室向け</div>
+          </button>
+          <button class="mode-btn" data-mode="NORMAL" onclick="setMode('NORMAL')">
+            標準
+            <div class="mode-btn-desc">一般家庭向け</div>
+          </button>
+          <button class="mode-btn active" data-mode="POC" onclick="setMode('POC')">
+            PoC
+            <div class="mode-btn-desc">オフィス対応</div>
+          </button>
+        </div>
+        <div class="mode-hint" id="mode-hint">
+          オフィスや騒がしい環境でも、品質チェックを通過しやすい緩和設定です。
+        </div>
+      </div>
+
       <p class="note">※ マイクの使用許可が必要です。静かな場所でご利用ください。</p>
     </div>
     <div class="cta-float">
@@ -288,6 +404,9 @@ summary{cursor:pointer; color:var(--muted); font-size:.86rem; padding:6px 0;}
 
       <div class="quality-info" id="qualityInfo"></div>
 
+      <!-- ★ モード情報 -->
+      <div class="mode-info-result" id="modeInfoResult"></div>
+
       <details>
         <summary>📊 解析データの詳細</summary>
         <table class="detail-table" id="detailTable"></table>
@@ -340,6 +459,67 @@ summary{cursor:pointer; color:var(--muted); font-size:.86rem; padding:6px 0;}
 const API_URL = "https://voice-api-711078318525.asia-northeast1.run.app/api/v1/voice/analyze";
 const API_KEY = "my_super_secret_key_2026";
 
+// ==================== 品質モード定義 ====================
+const QUALITY_MODES = {
+  STRICT: {
+    label: '厳格',
+    badge: '厳格',
+    badgeClass: 'strict',
+    hint: '静音室や録音スタジオなど、非常に静かな環境での利用に最適化された設定です。',
+    resultInfo: '厳格モードで測定されました。最も信頼性の高い結果です。',
+    env: { ok: 0.01, warn: 0.03 },
+    mic: { peak: 0.98, snrNG: 4, snrWarn: 10, gainMax: 8.0, rmsMin: 0.003 },
+    rec: { rmsMin: 0.02, rmsMax: 0.15, peak: 0.98, snrNG: 4, snrWarn: 8, voicedNG: 0.3, voicedWarn: 0.5 }
+  },
+  NORMAL: {
+    label: '標準',
+    badge: '標準',
+    badgeClass: 'normal',
+    hint: '一般家庭や静かな会議室など、通常の住環境での利用を想定した設定です。',
+    resultInfo: '標準モードで測定されました。',
+    env: { ok: 0.015, warn: 0.05 },
+    mic: { peak: 0.99, snrNG: 3, snrWarn: 7, gainMax: 10.0, rmsMin: 0.002 },
+    rec: { rmsMin: 0.015, rmsMax: 0.20, peak: 0.99, snrNG: 3, snrWarn: 6, voicedNG: 0.2, voicedWarn: 0.4 }
+  },
+  POC: {
+    label: 'PoC',
+    badge: 'PoC',
+    badgeClass: 'poc',
+    hint: 'オフィスや騒がしい環境でも、品質チェックを通過しやすい緩和設定です。',
+    resultInfo: 'PoCモード（緩和品質）で測定されました。結果の精度は環境により低下する可能性があります。',
+    env: { ok: 0.02, warn: 0.08 },
+    mic: { peak: 0.99, snrNG: 2, snrWarn: 5, gainMax: 12.0, rmsMin: 0.001 },
+    rec: { rmsMin: 0.01, rmsMax: 0.25, peak: 0.99, snrNG: 2, snrWarn: 4, voicedNG: 0.15, voicedWarn: 0.3 }
+  }
+};
+
+let CURRENT_MODE = localStorage.getItem('qcMode') || 'POC';
+let QC = QUALITY_MODES[CURRENT_MODE];
+
+function setMode(mode){
+  if(!QUALITY_MODES[mode]) return;
+  CURRENT_MODE = mode;
+  QC = QUALITY_MODES[mode];
+  try{ localStorage.setItem('qcMode', mode); }catch(e){}
+  updateModeUI();
+}
+
+function updateModeUI(){
+  // バッジ更新
+  const badge = document.getElementById('mode-badge');
+  if(badge){
+    badge.textContent = QC.badge;
+    badge.className = 'mode-badge ' + QC.badgeClass;
+  }
+  // ボタン状態更新
+  document.querySelectorAll('.mode-btn').forEach(btn=>{
+    btn.classList.toggle('active', btn.dataset.mode === CURRENT_MODE);
+  });
+  // ヒント文更新
+  const hint = document.getElementById('mode-hint');
+  if(hint) hint.textContent = QC.hint;
+}
+
 // ==================== グローバル状態 ====================
 let audioCtx=null, analyser=null, source=null, gainNode=null, processor=null, muteGain=null, dataArray=null;
 let isCapturing=false;
@@ -347,7 +527,7 @@ let currentBuffers=[];
 let currentStep=0;
 let noiseFloor=0.005;
 let calibrationGain=1.0;
-let recording=null;  // 単一の録音データを保持
+let recording=null;
 
 const steps=[
   {id:'screen-intro'},
@@ -462,7 +642,7 @@ async function ensureMic(){
 async function startFromIntro(){
   const ok=await ensureMic();
   if(!ok) return;
-  showStep(1);  // 環境音チェックへ
+  showStep(1);
 }
 
 // ==================== レベルメーター ====================
@@ -507,22 +687,24 @@ async function startEnvCheck(){
   const merged=mergeFloat(currentBuffers);
   const rms=computeRMS(merged);
   noiseFloor=Math.max(rms,0.001);
-  const verdict=rms<0.01?'OK':(rms<=0.03?'WARN':'NG');
+  // ★ モード別閾値で判定
+  const verdict=rms<QC.env.ok?'OK':(rms<=QC.env.warn?'WARN':'NG');
   const card=document.getElementById('env-result');
   card.style.display='block';
   card.className='qc-card '+verdict.toLowerCase();
   const row=document.getElementById('env-btn-row');
+  const modeNote = `<li style="color:#888;font-size:.84rem;">[${QC.label}モード判定 / OK閾値: ${QC.env.ok.toFixed(3)}]</li>`;
   if(verdict==='OK'){
     card.innerHTML='<div class="qc-title ok">✅ 良好</div>'+
-      '<ul class="qc-list"><li>静かな環境です（環境RMS: '+rms.toFixed(4)+'）</li><li>次のステップへ進めます</li></ul>';
+      '<ul class="qc-list"><li>静かな環境です（環境RMS: '+rms.toFixed(4)+'）</li><li>次のステップへ進めます</li>'+modeNote+'</ul>';
     row.innerHTML='<button class="btn" onclick="goToMicTest()">マイクテストへ進む</button>';
   }else if(verdict==='WARN'){
     card.innerHTML='<div class="qc-title warn">⚠️ 許容範囲</div>'+
-      '<ul class="qc-list"><li>少し周囲の音があります（環境RMS: '+rms.toFixed(4)+'）</li><li>このまま進めますが、できれば静かな場所が望ましいです</li></ul>';
+      '<ul class="qc-list"><li>少し周囲の音があります（環境RMS: '+rms.toFixed(4)+'）</li><li>このまま進めますが、できれば静かな場所が望ましいです</li>'+modeNote+'</ul>';
     row.innerHTML='<div class="cta-row"><button class="btn" onclick="goToMicTest()">マイクテストへ進む</button><button class="btn btn-sub" onclick="retryEnvCheck()">もう一度確認</button></div>';
   }else{
     card.innerHTML='<div class="qc-title ng">❌ 周囲の音が大きい</div>'+
-      '<ul class="qc-list"><li>環境RMSが高い値です（'+rms.toFixed(4)+'）</li><li>静かな場所へ移動してから再度お試しください</li></ul>';
+      '<ul class="qc-list"><li>環境RMSが高い値です（'+rms.toFixed(4)+'）</li><li>静かな場所へ移動してから再度お試しください</li>'+modeNote+'</ul>';
     row.innerHTML='<button class="btn btn-ng" onclick="retryEnvCheck()">もう一度確認</button>';
   }
   btn.disabled=false;
@@ -570,19 +752,21 @@ async function startMicTest(){
   const TARGET=0.10;
   let gain = (voiceRMS>0.0005) ? (TARGET / voiceRMS) : 1.0;
   if(gain<1.0) gain=1.0;
-  if(gain>8.0) gain=8.0;
+  // ★ モード別ゲイン上限
+  if(gain>QC.mic.gainMax) gain=QC.mic.gainMax;
   calibrationGain=gain;
   if(gainNode) gainNode.gain.value=calibrationGain;
   noiseFloor = noiseFloor * calibrationGain;
   const postRMS = voiceRMS * calibrationGain;
   let verdict='OK', reasons=[];
-  if(peak>=0.98){verdict='NG';reasons.push('音が大きすぎる可能性があります（クリッピング）。少しマイクから離れてください。');}
-  if(snr<4){verdict='NG';reasons.push('周囲との差が不足しています（SNR: '+snr.toFixed(1)+'）。静かな場所で再度お試しください。');}
-  if(voiceRMS<0.003 && calibrationGain>=8.0){
+  // ★ モード別閾値で判定
+  if(peak>=QC.mic.peak){verdict='NG';reasons.push('音が大きすぎる可能性があります（クリッピング）。少しマイクから離れてください。');}
+  if(snr<QC.mic.snrNG){verdict='NG';reasons.push('周囲との差が不足しています（SNR: '+snr.toFixed(1)+'）。静かな場所で再度お試しください。');}
+  if(voiceRMS<QC.mic.rmsMin && calibrationGain>=QC.mic.gainMax){
     verdict='NG';
     reasons.push('声が非常に小さく検出されました。マイクに近づいて、もう少し大きな声でお願いします。');
   }
-  if(verdict==='OK' && snr<10) verdict='WARN';
+  if(verdict==='OK' && snr<QC.mic.snrWarn) verdict='WARN';
   const card=document.getElementById('mic-result');
   card.style.display='block';
   card.className='qc-card '+verdict.toLowerCase();
@@ -591,17 +775,18 @@ async function startMicTest(){
     ? '<li><span class="calib">音量を最適化しました（×'+calibrationGain.toFixed(1)+'）</span></li>'
     : '<li><span class="calib">音量は十分でした（調整なし）</span></li>';
   const detailLine = '<li>声量: '+voiceRMS.toFixed(3)+' → '+postRMS.toFixed(3)+'</li>';
+  const modeNote = `<li style="color:#888;font-size:.84rem;">[${QC.label}モード判定 / SNR基準: ${QC.mic.snrNG}以上]</li>`;
   if(verdict==='OK'){
     card.innerHTML='<div class="qc-title ok">✅ マイクOK</div>'+
-      '<ul class="qc-list">'+calibLine+detailLine+'<li>SNR: '+snr.toFixed(1)+'</li><li>本収録に進めます</li></ul>';
+      '<ul class="qc-list">'+calibLine+detailLine+'<li>SNR: '+snr.toFixed(1)+'</li><li>本収録に進めます</li>'+modeNote+'</ul>';
     row.innerHTML='<button class="btn" onclick="goToRecording()">本収録を開始する</button>';
   }else if(verdict==='WARN'){
     card.innerHTML='<div class="qc-title warn">⚠️ 一部許容</div>'+
-      '<ul class="qc-list">'+calibLine+detailLine+'<li>SNR: '+snr.toFixed(1)+'（やや低め）</li><li>このまま進めますが、より静かな環境を推奨します</li></ul>';
+      '<ul class="qc-list">'+calibLine+detailLine+'<li>SNR: '+snr.toFixed(1)+'（やや低め）</li><li>このまま進めますが、より静かな環境を推奨します</li>'+modeNote+'</ul>';
     row.innerHTML='<div class="cta-row"><button class="btn" onclick="goToRecording()">本収録を開始する</button><button class="btn btn-sub" onclick="retryMicTest()">もう一度テスト（再較正）</button></div>';
   }else{
     card.innerHTML='<div class="qc-title ng">❌ マイクNG</div>'+
-      '<ul class="qc-list">'+reasons.map(r=>'<li>'+r+'</li>').join('')+'</ul>';
+      '<ul class="qc-list">'+reasons.map(r=>'<li>'+r+'</li>').join('')+modeNote+'</ul>';
     row.innerHTML='<button class="btn btn-ng" onclick="retryMicTest()">もう一度テスト（再較正）</button>';
   }
   btn.disabled=false;
@@ -645,7 +830,6 @@ function finalizeRecording(){
   const wavBlob=encodeWAV(merged,audioCtx.sampleRate);
   recording={blob:wavBlob, samples:merged, sampleRate:audioCtx.sampleRate};
   
-  // 品質チェック
   const qc=evaluateQuality();
   if(qc.verdict==='NG'){
     showQCModal(qc.reasons);
@@ -665,12 +849,13 @@ function evaluateQuality(){
   const snr=rms/Math.max(noiseFloor,0.0001);
   const voicedRatio=computeVoicedRatio(samples,sr,noiseFloor);
   let verdict='OK'; let reasons=[];
-  if(rms<0.02){verdict='NG';reasons.push('声が小さい可能性があります（RMS: '+rms.toFixed(3)+'）。マイクに近づいてください。');}
-  else if(rms>0.15 || peak>=0.98){verdict='NG';reasons.push('声が大きすぎる可能性があります（クリッピング）。少しマイクから離れてください。');}
-  if(snr<4){verdict='NG';reasons.push('周囲の音と発声の差が不足しています（SNR: '+snr.toFixed(1)+'）。静かな環境で再度お試しください。');}
-  else if(snr<8 && verdict==='OK') verdict='WARN';
-  if(voicedRatio<0.3){verdict='NG';reasons.push('発声がほとんど検出できませんでした（有効区間: '+(voicedRatio*100).toFixed(0)+'%）。ガイドに合わせて発声してください。');}
-  else if(voicedRatio<0.5 && verdict==='OK') verdict='WARN';
+  // ★ モード別閾値で判定
+  if(rms<QC.rec.rmsMin){verdict='NG';reasons.push('声が小さい可能性があります（RMS: '+rms.toFixed(3)+'）。マイクに近づいてください。');}
+  else if(rms>QC.rec.rmsMax || peak>=QC.rec.peak){verdict='NG';reasons.push('声が大きすぎる可能性があります（クリッピング）。少しマイクから離れてください。');}
+  if(snr<QC.rec.snrNG){verdict='NG';reasons.push('周囲の音と発声の差が不足しています（SNR: '+snr.toFixed(1)+'）。静かな環境で再度お試しください。');}
+  else if(snr<QC.rec.snrWarn && verdict==='OK') verdict='WARN';
+  if(voicedRatio<QC.rec.voicedNG){verdict='NG';reasons.push('発声がほとんど検出できませんでした（有効区間: '+(voicedRatio*100).toFixed(0)+'%）。ガイドに合わせて発声してください。');}
+  else if(voicedRatio<QC.rec.voicedWarn && verdict==='OK') verdict='WARN';
   return {verdict:verdict,reasons:reasons};
 }
 
@@ -727,20 +912,17 @@ async function sendToAPI(){
 
 // ==================== 結果表示 ====================
 function displayResults(data){
-  // 総合スコア
   const total=data.throat_score.total;
   document.getElementById('totalScore').innerText=Math.round(total.value);
   document.getElementById('totalScoreBg').style.background=total.color_hint;
   document.getElementById('scoreLabel').innerText=total.level_label;
 
-  // サブスコア
   const subs=data.throat_score.sub_scores;
   document.getElementById('cppScore').innerText=Math.round(subs.voice_projection.score);
   document.getElementById('cppRaw').innerText=subs.voice_projection.raw_value.toFixed(2)+' '+subs.voice_projection.raw_unit;
   document.getElementById('hnrScore').innerText=Math.round(subs.voice_clarity.score);
   document.getElementById('hnrRaw').innerText=subs.voice_clarity.raw_value.toFixed(2)+' '+subs.voice_clarity.raw_unit;
 
-  // プロフィール
   const profileGrid=document.getElementById('profileGrid');
   profileGrid.innerHTML='';
   for(const [key,item] of Object.entries(data.voice_profile)){
@@ -750,7 +932,6 @@ function displayResults(data){
     profileGrid.appendChild(div);
   }
 
-  // 品質情報
   const q=data.quality;
   const qualityInfo=document.getElementById('qualityInfo');
   const statusClass=q.overall_status==='ok'?'':'warn';
@@ -761,7 +942,11 @@ function displayResults(data){
     <span>処理: ${(data.meta.processing_time_ms/1000).toFixed(1)}秒</span>
   `;
 
-  // 詳細テーブル
+  // ★ モード情報を結果に表示
+  const modeInfo=document.getElementById('modeInfoResult');
+  modeInfo.className='mode-info-result '+QC.badgeClass;
+  modeInfo.innerHTML = `<strong>📋 品質モード: ${QC.label}</strong><br>${QC.resultInfo}`;
+
   const detailTable=document.getElementById('detailTable');
   detailTable.innerHTML=`
     <tr><th>指標</th><th class="num">値</th><th>単位</th></tr>
@@ -865,7 +1050,11 @@ function resetApp(){
 
 window.addEventListener('resize',fitCanvases);
 window.addEventListener('orientationchange', ()=> setTimeout(fitCanvases, 200));
-document.addEventListener('DOMContentLoaded',()=>{ fitCanvases(); initStepper(); });
+document.addEventListener('DOMContentLoaded',()=>{ 
+  fitCanvases(); 
+  initStepper(); 
+  updateModeUI();
+});
 </script>
 </body>
 </html>
