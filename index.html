@@ -230,6 +230,20 @@ summary{cursor:pointer; color:var(--muted); font-size:.86rem; padding:6px 0;}
 .modal-handle{width:42px; height:4px; background:#dde2e6; border-radius:999px; margin:0 auto 12px;}
 .cta-row{display:flex; gap:8px;}
 .cta-row .btn{flex:1;}
+
+/* 履歴ページ */
+.history-item{display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border:1px solid var(--border); border-radius:12px; margin-bottom:8px; background:#fafcfc;}
+.history-item .h-left{display:flex; flex-direction:column; gap:4px;}
+.history-item .h-date{font-size:.78rem; color:var(--muted); display:flex; align-items:center;}
+.history-item .h-scores{font-size:.86rem; color:#333;}
+.history-item .h-total{font-size:1.5rem; font-weight:900; color:var(--primary-dark); padding-left:10px;}
+.history-mode-tag{font-size:.66rem; padding:2px 8px; border-radius:999px; font-weight:700; margin-right:6px; white-space:nowrap;}
+.history-mode-tag.strict{background:#e8f5e9; color:#1b5e20;}
+.history-mode-tag.normal{background:#e3f2fd; color:#0d47a1;}
+.history-mode-tag.poc{background:#fff8e1; color:#856404;}
+.history-legend{display:flex; gap:14px; flex-wrap:wrap; font-size:.78rem; color:var(--muted); margin:8px 0 4px;}
+.history-legend span{display:flex; align-items:center; gap:5px;}
+.history-legend i{width:10px; height:10px; border-radius:3px; display:inline-block;}
 </style>
 </head>
 <body>
@@ -295,7 +309,10 @@ summary{cursor:pointer; color:var(--muted); font-size:.86rem; padding:6px 0;}
       <p class="note">※ マイクの使用許可が必要です。静かな場所でご利用ください。</p>
     </div>
     <div class="cta-float">
-      <button class="btn" onclick="startFromIntro()">チェックをはじめる</button>
+      <div class="cta-row">
+        <button class="btn" style="flex:2.2;" onclick="startFromIntro()">チェックをはじめる</button>
+        <button class="btn btn-sub" style="flex:1;" onclick="showHistory()">📊 履歴</button>
+      </div>
     </div>
   </div>
 
@@ -418,6 +435,7 @@ summary{cursor:pointer; color:var(--muted); font-size:.86rem; padding:6px 0;}
     </div>
     <div class="cta-bar">
       <button class="btn btn-sub" onclick="resetApp()">もう一度チェック</button>
+      <button class="btn btn-sub" style="border-color:#b2dfdb; color:var(--primary-dark);" onclick="showHistory()">📊 測定履歴を見る</button>
     </div>
   </div>
 
@@ -429,6 +447,39 @@ summary{cursor:pointer; color:var(--muted); font-size:.86rem; padding:6px 0;}
     </div>
     <div class="cta-bar">
       <button class="btn btn-sub" onclick="resetApp()">最初からやり直す</button>
+    </div>
+  </div>
+
+  <!-- 測定履歴 -->
+  <div id="screen-history" class="screen">
+    <div class="screen-body" style="text-align:left;">
+      <h2 style="text-align:center;">📊 測定履歴</h2>
+
+      <div class="mode-selector" style="margin-top:12px;">
+        <div class="mode-selector-title">🔍 表示する測定環境</div>
+        <div class="mode-buttons" id="history-mode-tabs">
+          <button class="mode-btn active" data-hmode="ALL" onclick="setHistoryFilter('ALL')">すべて</button>
+          <button class="mode-btn" data-hmode="STRICT" onclick="setHistoryFilter('STRICT')">厳格</button>
+          <button class="mode-btn" data-hmode="NORMAL" onclick="setHistoryFilter('NORMAL')">標準</button>
+          <button class="mode-btn" data-hmode="POC" onclick="setHistoryFilter('POC')">PoC</button>
+        </div>
+      </div>
+
+      <div class="section-title">スコア推移</div>
+      <canvas id="history-canvas" width="680" height="220" style="height:220px;"></canvas>
+      <div class="history-legend">
+        <span><i style="background:#00796b;"></i>総合スコア</span>
+        <span><i style="background:#1e88e5;"></i>CPP（声の通り）</span>
+        <span><i style="background:#fb8c00;"></i>HNR（声のクリアさ）</span>
+      </div>
+
+      <div class="section-title">測定記録一覧</div>
+      <div id="history-list"></div>
+      <p class="note" id="history-empty" style="display:none;">まだ測定履歴がありません。チェックを実行すると、ここに記録されます。</p>
+    </div>
+    <div class="cta-bar">
+      <button class="btn btn-sub" onclick="closeHistory()">閉じる</button>
+      <button class="btn btn-sub" style="color:var(--ng); border-color:#f3b8b8;" onclick="clearHistory()">履歴をすべて削除</button>
     </div>
   </div>
 
@@ -456,7 +507,7 @@ summary{cursor:pointer; color:var(--muted); font-size:.86rem; padding:6px 0;}
 
 <script>
 // ==================== API 設定 ====================
-const API_URL = "https://voice-api-711078318525.asia-northeast1.run.app/api/v1/voice/analyze";
+const API_URL = "https://no-6e21c4c4979f4664ad49f7982da094a4.ecs.ap-northeast-1.on.aws/api/v1/voice/analyze";
 const API_KEY = "my_super_secret_key_2026";
 
 // ==================== 品質モード定義 ====================
@@ -528,6 +579,9 @@ let currentStep=0;
 let noiseFloor=0.005;
 let calibrationGain=1.0;
 let recording=null;
+let historyReturnIdx=0;
+let historyFilter='ALL';
+const HISTORY_KEY='throatConditionHistory';
 
 const steps=[
   {id:'screen-intro'},
@@ -966,6 +1020,19 @@ function displayResults(data){
   modeInfo.className='mode-info-result '+QC.badgeClass;
   modeInfo.innerHTML = `<strong>📋 品質モード: ${QC.label}</strong><br>${QC.resultInfo}`;
 
+  // ★ 履歴に保存（総合スコア／CPP／HNR、測定モード別）
+  saveHistoryEntry({
+    ts: Date.now(),
+    mode: CURRENT_MODE,
+    total: Math.round(total.value),
+    cppScore: Math.round(subs.voice_projection.score),
+    cppRaw: subs.voice_projection.raw_value,
+    cppUnit: subs.voice_projection.raw_unit,
+    hnrScore: Math.round(subs.voice_clarity.score),
+    hnrRaw: subs.voice_clarity.raw_value,
+    hnrUnit: subs.voice_clarity.raw_unit
+  });
+
   const detailTable=document.getElementById('detailTable');
   detailTable.innerHTML=`
     <tr><th>指標</th><th class="num">値</th><th>単位</th></tr>
@@ -1058,6 +1125,149 @@ function floatTo16BitPCM(view,offset,input){
   }
 }
 
+// ==================== 履歴機能 ====================
+function loadHistory(){
+  try{
+    const raw=localStorage.getItem(HISTORY_KEY);
+    return raw?JSON.parse(raw):[];
+  }catch(e){
+    console.error('履歴の読み込みに失敗しました:',e);
+    return [];
+  }
+}
+function saveHistoryEntry(entry){
+  try{
+    const list=loadHistory();
+    list.push(entry);
+    if(list.length>200) list.splice(0,list.length-200); // 直近200件まで保持
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
+  }catch(e){
+    console.error('履歴の保存に失敗しました:',e);
+  }
+}
+function clearHistory(){
+  if(!confirm('測定履歴をすべて削除します。よろしいですか？')) return;
+  try{ localStorage.removeItem(HISTORY_KEY); }catch(e){}
+  renderHistory();
+}
+function setHistoryFilter(mode){
+  historyFilter=mode;
+  document.querySelectorAll('#history-mode-tabs .mode-btn').forEach(btn=>{
+    btn.classList.toggle('active', btn.dataset.hmode===mode);
+  });
+  renderHistory();
+}
+function showHistory(){
+  historyReturnIdx=currentStep;
+  document.querySelectorAll('.screen').forEach(el=>el.classList.remove('active'));
+  document.getElementById('screen-history').classList.add('active');
+  renderHistory();
+}
+function closeHistory(){
+  document.querySelectorAll('.screen').forEach(el=>el.classList.remove('active'));
+  document.getElementById(steps[historyReturnIdx].id).classList.add('active');
+}
+function renderHistory(){
+  const all=loadHistory();
+  const filtered = historyFilter==='ALL' ? all : all.filter(e=>e.mode===historyFilter);
+  const sortedDesc = filtered.slice().sort((a,b)=>b.ts-a.ts);
+
+  const listEl=document.getElementById('history-list');
+  const emptyEl=document.getElementById('history-empty');
+  if(listEl) listEl.innerHTML='';
+  if(sortedDesc.length===0){
+    if(emptyEl) emptyEl.style.display='block';
+  }else{
+    if(emptyEl) emptyEl.style.display='none';
+    sortedDesc.forEach(e=>{
+      const modeMeta=QUALITY_MODES[e.mode] || {label:e.mode, badgeClass:''};
+      const dateStr=new Date(e.ts).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      const div=document.createElement('div');
+      div.className='history-item';
+      div.innerHTML=`
+        <div class="h-left">
+          <div class="h-date"><span class="history-mode-tag ${modeMeta.badgeClass}">${modeMeta.label}</span>${dateStr}</div>
+          <div class="h-scores">CPP ${e.cppScore} ／ HNR ${e.hnrScore}</div>
+        </div>
+        <div class="h-total">${e.total}</div>
+      `;
+      listEl.appendChild(div);
+    });
+  }
+  // グラフは時系列（古い→新しい）順で描画
+  drawHistoryChart(sortedDesc.slice().reverse());
+}
+function drawHistoryChart(entries){
+  const canvas=document.getElementById('history-canvas');
+  if(!canvas) return;
+  const rect=canvas.getBoundingClientRect();
+  const w=Math.max(280, Math.floor(rect.width || canvas.parentElement.clientWidth || 320));
+  canvas.width=w;
+  canvas.height=220;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  const padL=32, padR=12, padT=14, padB=24;
+  const plotW=canvas.width-padL-padR;
+  const plotH=canvas.height-padT-padB;
+
+  // グリッド線と目盛り
+  ctx.strokeStyle='#e3e7ea';
+  ctx.lineWidth=1;
+  ctx.beginPath();
+  [0,1,2,3,4].forEach(g=>{
+    const y=padT+plotH*(g/4);
+    ctx.moveTo(padL,y); ctx.lineTo(padL+plotW,y);
+  });
+  ctx.stroke();
+  ctx.fillStyle='#98a4ab';
+  ctx.font='10px sans-serif';
+  ctx.textAlign='right';
+  [100,75,50,25,0].forEach((v,i)=>{
+    const y=padT+plotH*(i/4);
+    ctx.fillText(String(v), padL-6, y+3);
+  });
+
+  if(entries.length===0){
+    ctx.textAlign='center';
+    ctx.fillStyle='#98a4ab';
+    ctx.font='13px sans-serif';
+    ctx.fillText('データがありません', canvas.width/2, canvas.height/2);
+    return;
+  }
+
+  const n=entries.length;
+  const xFor=i=> n===1 ? padL+plotW/2 : padL+plotW*(i/(n-1));
+  const yFor=v=> padT+plotH*(1-Math.max(0,Math.min(100,v))/100);
+
+  function drawLine(key,color){
+    ctx.strokeStyle=color;
+    ctx.lineWidth=2.2;
+    ctx.beginPath();
+    entries.forEach((e,i)=>{
+      const x=xFor(i), y=yFor(e[key]);
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+    ctx.fillStyle=color;
+    entries.forEach((e,i)=>{
+      const x=xFor(i), y=yFor(e[key]);
+      ctx.beginPath(); ctx.arc(x,y,2.6,0,Math.PI*2); ctx.fill();
+    });
+  }
+  drawLine('total','#00796b');
+  drawLine('cppScore','#1e88e5');
+  drawLine('hnrScore','#fb8c00');
+
+  // 横軸の日付ラベル（最初と最後）
+  ctx.fillStyle='#98a4ab';
+  ctx.font='10px sans-serif';
+  ctx.textAlign='left';
+  ctx.fillText(new Date(entries[0].ts).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}), padL, canvas.height-6);
+  ctx.textAlign='right';
+  ctx.fillText(new Date(entries[n-1].ts).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}), padL+plotW, canvas.height-6);
+}
+
 // ==================== リセット ====================
 function resetApp(){
   recording=null;
@@ -1067,8 +1277,12 @@ function resetApp(){
   showStep(0);
 }
 
-window.addEventListener('resize',fitCanvases);
-window.addEventListener('orientationchange', ()=> setTimeout(fitCanvases, 200));
+function refreshHistoryIfVisible(){
+  const el=document.getElementById('screen-history');
+  if(el && el.classList.contains('active')) renderHistory();
+}
+window.addEventListener('resize',()=>{ fitCanvases(); refreshHistoryIfVisible(); });
+window.addEventListener('orientationchange', ()=> setTimeout(()=>{ fitCanvases(); refreshHistoryIfVisible(); }, 200));
 document.addEventListener('DOMContentLoaded',()=>{ 
   fitCanvases(); 
   initStepper(); 
